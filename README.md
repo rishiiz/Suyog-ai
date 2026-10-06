@@ -1,7 +1,6 @@
-﻿# Suyog AI — Elder Care Monitor & Medicine Reminder
+# Suyog AI — Elder Care Monitor & Medicine Reminder
 
 > **Phase 1 MVP Implementation**  
-> Total hardware budget: **₹1,500** (Fixed BOM ≈ **₹1,270**).  
 > Zero-Hardware Demo Path: Full end-to-end simulator included.
 
 Suyog AI helps elderly individuals living alone through:
@@ -11,22 +10,21 @@ Suyog AI helps elderly individuals living alone through:
 
 ---
 
-## 1. Hardware Specification & BOM (Fixed BOM: ≈ ₹1,270)
+## 1. Hardware Specification & BOM
 
-| # | Component | Qty | Approx. Cost (₹) | Purpose & Wiring Note |
-|---|---|---|---|---|
-| 1 | **ESP32 DevKit V1 (30-pin)** | 1 | 450 | Central Hub Controller with Wi-Fi & NVS flash |
-| 2 | **HC-SR501 PIR Sensor** | 2 | 150 | Bedroom (GPIO 27) & Living Room (GPIO 26) motion |
-| 3 | **Big Push Button (Red)** | 1 | 40 | Emergency Panic / SOS (GPIO 32, 2s long press) |
-| 4 | **Big Push Button (Green)** | 1 | 40 | Medicine Confirm / "I'm OK" (GPIO 33, short press) |
-| 5 | **Active Buzzer (5V)** | 1 | 20 | Medicine reminder chime & alert siren (GPIO 25) |
-| 6 | **LEDs (Red + Green) + 220Ω** | 2+2 | 20 | Red = Alert/Reminder (GPIO 14), Green = Confirmed (GPIO 13) |
-| 7 | **0.96" I2C OLED (SSD1306)** | 1 | 150 | Next medicine, time, instructions (SDA=21, SCL=22) |
-| 8 | **Reed Switch + Magnet** | 2 | 40 | Pill-box compartment lid sensing (GPIO 34, 35) |
-| 9 | **Breadboard** | 1 | 80 | Circuit prototyping |
-| 10 | **Jumper Wire Set** | 1 | 80 | Breadboard & module connections |
-| 11 | **5V 2A Adapter + Micro-USB**| 1 | 200 | Regulated power supply |
-| **Total** | | | **₹1,270** | *Within ₹1,500 budget limit* |
+| # | Component | Qty | Purpose & Wiring Note |
+|---|---|---|---|
+| 1 | **ESP32 DevKit V1 (30-pin)** | 1 | Central Hub Controller with Wi-Fi & NVS flash |
+| 2 | **HC-SR501 PIR Sensor** | 2 | Bedroom (GPIO 27) & Living Room (GPIO 26) motion |
+| 3 | **Big Push Button (Red)** | 1 | Emergency Panic / SOS (GPIO 32, 2s long press) |
+| 4 | **Big Push Button (Green)** | 1 | Medicine Confirm / "I'm OK" (GPIO 33, short press) |
+| 5 | **Active Buzzer (5V)** | 1 | Medicine reminder chime & alert siren (GPIO 25) |
+| 6 | **LEDs (Red + Green) + 220Ω** | 2+2 | Red = Alert/Reminder (GPIO 14), Green = Confirmed (GPIO 13) |
+| 7 | **0.96" I2C OLED (SSD1306)** | 1 | Next medicine, time, instructions (SDA=21, SCL=22) |
+| 8 | **Reed Switch + Magnet** | 2 | Pill-box compartment lid sensing (GPIO 34, 35) |
+| 9 | **Breadboard** | 1 | Circuit prototyping |
+| 10 | **Jumper Wire Set** | 1 | Breadboard & module connections |
+| 11 | **5V 2A Adapter + Micro-USB** | 1 | Regulated power supply |
 
 ---
 
