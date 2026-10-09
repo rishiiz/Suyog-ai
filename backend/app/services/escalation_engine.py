@@ -1,4 +1,4 @@
-﻿import datetime
+import datetime
 import json
 import logging
 from typing import Optional, Dict, Any, List
@@ -276,9 +276,10 @@ class EscalationEngine:
         if not alert or alert.status != "active":
             return None
 
-        alert.status = "acknowledged"
+        alert.status = "resolved"
         alert.acknowledged_by = responder_name
         alert.acknowledged_ts = datetime.datetime.utcnow()
+        alert.resolved_ts = datetime.datetime.utcnow()
 
         action = AlertAction(
             alert_id=alert.id,

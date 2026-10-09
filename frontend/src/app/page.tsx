@@ -22,8 +22,18 @@ export default function LoginPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || "Login failed. Please check your credentials.");
+        const data = await res.json().catch(() => null);
+        let errorMsg = "Login failed. Please check your credentials.";
+        if (data?.detail) {
+          if (typeof data.detail === "string") {
+            errorMsg = data.detail;
+          } else if (Array.isArray(data.detail)) {
+            errorMsg = data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
+          } else if (typeof data.detail === "object") {
+            errorMsg = JSON.stringify(data.detail);
+          }
+        }
+        throw new Error(errorMsg);
       }
 
       const data = await res.json();
@@ -60,7 +70,7 @@ export default function LoginPage() {
           </div>
         </div>
         <div style={styles.leftFooter}>
-          Hardware budget: ₹1,500 · Designed for Indian homes
+
         </div>
       </div>
 

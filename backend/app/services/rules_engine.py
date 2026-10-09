@@ -1,4 +1,4 @@
-﻿import datetime
+import datetime
 import json
 import logging
 from typing import Optional, Dict, Any, List
@@ -55,7 +55,7 @@ class RulesEngine:
 
         # Get device associated with elder
         device = session.exec(select(Device).where(Device.elder_id == elder_id)).first()
-        if not device:
+        if not device or device.status != "online":
             return None
 
         # Determine threshold based on current time of day
@@ -119,7 +119,7 @@ class RulesEngine:
             return None
 
         device = session.exec(select(Device).where(Device.elder_id == elder_id)).first()
-        if not device:
+        if not device or device.status != "online":
             return None
 
         # Look for motion today since sleep_end

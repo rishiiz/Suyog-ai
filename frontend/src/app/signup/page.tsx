@@ -36,8 +36,10 @@ export default function SignupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: form.full_name,
           full_name: form.full_name,
           email: form.email,
+          phone: form.phone_number,
           phone_number: form.phone_number,
           password: form.password,
           role: "caregiver",
@@ -45,13 +47,23 @@ export default function SignupPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || "Registration failed. Please try again.");
+        const data = await res.json().catch(() => null);
+        let errorMsg = "Registration failed. Please try again.";
+        if (data?.detail) {
+          if (typeof data.detail === "string") {
+            errorMsg = data.detail;
+          } else if (Array.isArray(data.detail)) {
+            errorMsg = data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
+          } else if (typeof data.detail === "object") {
+            errorMsg = JSON.stringify(data.detail);
+          }
+        }
+        throw new Error(errorMsg);
       }
 
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -102,7 +114,7 @@ export default function SignupPage() {
                 value={form.full_name}
                 onChange={(e) => update("full_name", e.target.value)}
                 style={styles.input}
-                placeholder="Rohit Kulkarni"
+                placeholder="Full name"
                 required
                 autoComplete="name"
               />
@@ -131,7 +143,7 @@ export default function SignupPage() {
                 value={form.phone_number}
                 onChange={(e) => update("phone_number", e.target.value)}
                 style={styles.input}
-                placeholder="+91 98765 43210"
+                placeholder="+91 00000 00000"
                 autoComplete="tel"
               />
             </div>

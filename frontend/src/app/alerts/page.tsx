@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
+import { AlertBellPopover } from "@/components/AlertBellPopover";
 import { api } from "@/lib/api";
 
 interface AlertActionItem {
@@ -39,22 +41,43 @@ interface NotificationItem {
 }
 
 export default function AlertsPage() {
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeElderId, setActiveElderId] = useState<number | null>(null);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ackingId, setAckingId] = useState<number | null>(null);
   const [testing, setTesting] = useState(false);
-  const [filter, setFilter] = useState<"all" | "active" | "resolved">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "resolved">("active");
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   async function loadData() {
     try {
-      const [alertsData, notifsData] = await Promise.all([
-        api.getAlerts(1).catch(() => []),
-        api.getLiveNotifications().catch(() => []),
-      ]);
-      setAlerts(alertsData || []);
-      setNotifications(notifsData || []);
+      const me = await api.getMe().catch(() => null);
+      setCurrentUser(me);
+
+      const simFlag = typeof window !== "undefined" && localStorage.getItem("suyog_simulation_mode") === "true";
+      let targetId: number | null = null;
+
+      if (me?.elders && me.elders.length > 0) {
+        targetId = me.elders[0].id;
+      } else if (me?.is_demo || simFlag) {
+        targetId = 1;
+      }
+
+      setActiveElderId(targetId);
+
+      if (targetId) {
+        const [alertsData, notifsData] = await Promise.all([
+          api.getAlerts(targetId).catch(() => []),
+          api.getLiveNotifications().catch(() => []),
+        ]);
+        setAlerts(alertsData || []);
+        setNotifications(notifsData || []);
+      } else {
+        setAlerts([]);
+        setNotifications([]);
+      }
     } catch (err) {
       console.error("Error loading alerts:", err);
     } finally {
@@ -71,14 +94,29 @@ export default function AlertsPage() {
   const handleAcknowledge = async (alertId: number) => {
     setAckingId(alertId);
     try {
-      await api.acknowledgeAlert(alertId, "Caregiver (Rohit Kulkarni)");
-      setMsg({ type: "success", text: "Alert acknowledged! Escalation sequence stopped immediately." });
+      await api.acknowledgeAlert(alertId, currentUser?.name || "Caregiver");
+      // Immediately remove from active alerts list
+      setAlerts((prev) => prev.filter((a) => a.id !== alertId));
+      setMsg({ type: "success", text: "Alert acknowledged and removed from active list!" });
       setTimeout(() => setMsg(null), 4000);
       await loadData();
     } catch (err) {
       setMsg({ type: "error", text: "Failed to acknowledge alert. Please try again." });
     } finally {
       setAckingId(null);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (!activeElderId) return;
+    try {
+      await api.clearAllAlerts(activeElderId);
+      setAlerts([]);
+      setMsg({ type: "success", text: "All alerts cleared successfully." });
+      setTimeout(() => setMsg(null), 4000);
+      await loadData();
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to clear alerts." });
     }
   };
 
@@ -145,7 +183,7 @@ export default function AlertsPage() {
               Multi-tiered safety protocol with automatic fall-through escalation and 1-click caregiver acknowledgement
             </p>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <button
               style={s.testBtn}
               onClick={() => handleTriggerTest("panic")}
@@ -153,6 +191,8 @@ export default function AlertsPage() {
             >
               {testing ? "Triggering..." : "⚡ Trigger Test Alert"}
             </button>
+            <AlertBellPopover />
+            <UserProfileMenu />
           </div>
         </header>
 
@@ -243,19 +283,38 @@ export default function AlertsPage() {
                 <h2 style={s.cardTitle}>Alert History & Live Queue ({filteredAlerts.length})</h2>
                 <p style={s.cardSub}>Review alerts and take emergency actions</p>
               </div>
-              <div style={s.filterTabs}>
-                {(["all", "active", "resolved"] as const).map((tab) => (
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {activeAlerts.length > 0 && (
                   <button
-                    key={tab}
+                    onClick={handleClearAll}
                     style={{
-                      ...s.filterBtn,
-                      ...(filter === tab ? s.filterBtnActive : {}),
+                      backgroundColor: "#fee2e2",
+                      color: "#dc2626",
+                      border: "1px solid #fecaca",
+                      borderRadius: 8,
+                      padding: "6px 14px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
                     }}
-                    onClick={() => setFilter(tab)}
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    Clear All Active Alerts
                   </button>
-                ))}
+                )}
+                <div style={s.filterTabs}>
+                  {(["active", "resolved", "all"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      style={{
+                        ...s.filterBtn,
+                        ...(filter === tab ? s.filterBtnActive : {}),
+                      }}
+                      onClick={() => setFilter(tab)}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

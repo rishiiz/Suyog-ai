@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
+import { AlertBellPopover } from "@/components/AlertBellPopover";
 import { api } from "@/lib/api";
 
 interface RoomInfo {
@@ -33,6 +35,7 @@ export default function RoomsPage() {
     firmware: "1.0.0-esp32",
     last_seen: null,
   });
+  const [activeElderId, setActiveElderId] = useState<number | null>(null);
   const [awayMode, setAwayMode] = useState(false);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,20 +45,46 @@ export default function RoomsPage() {
 
   async function loadData() {
     try {
-      const [statusData, timelineData, alertsData] = await Promise.all([
-        api.getElderStatus(1).catch(() => null),
-        api.getElderTimeline(1).catch(() => []),
-        api.getAlerts(1).catch(() => []),
-      ]);
+      const me = await api.getMe().catch(() => null);
+      const simFlag = typeof window !== "undefined" && localStorage.getItem("suyog_simulation_mode") === "true";
+      let targetId: number | null = null;
 
-      if (statusData) {
-        setRooms(statusData.rooms || {});
-        setDevice(statusData.device || {});
-        setAwayMode(!!statusData.away_mode);
+      if (me?.elders && me.elders.length > 0) {
+        targetId = me.elders[0].id;
+      } else if (me?.is_demo || simFlag) {
+        targetId = 1;
       }
-      setTimeline(timelineData || []);
-      const activeAlerts = (alertsData || []).filter((a: any) => a.status === "active");
-      setAlertCount(activeAlerts.length);
+
+      setActiveElderId(targetId);
+
+      if (targetId) {
+        const [statusData, timelineData, alertsData] = await Promise.all([
+          api.getElderStatus(targetId).catch(() => null),
+          api.getElderTimeline(targetId).catch(() => []),
+          api.getAlerts(targetId).catch(() => []),
+        ]);
+
+        if (statusData) {
+          setRooms(statusData.rooms || {});
+          setDevice(statusData.device || {});
+          setAwayMode(!!statusData.away_mode);
+        }
+        setTimeline(timelineData || []);
+        const activeAlerts = (alertsData || []).filter((a: any) => a.status === "active");
+        setAlertCount(activeAlerts.length);
+      } else {
+        setRooms({});
+        setDevice({
+          device_id: null,
+          status: "unlinked",
+          rssi: null,
+          firmware: null,
+          last_seen: null,
+        });
+        setAwayMode(false);
+        setTimeline([]);
+        setAlertCount(0);
+      }
     } catch (err) {
       console.error("Error loading room data:", err);
     } finally {
@@ -70,10 +99,11 @@ export default function RoomsPage() {
   }, []);
 
   const handleToggleAway = async () => {
+    if (!activeElderId) return;
     setTogglingAway(true);
     try {
       const nextAway = !awayMode;
-      await api.toggleAwayMode(1, nextAway);
+      await api.toggleAwayMode(activeElderId, nextAway);
       setAwayMode(nextAway);
       setMsg({
         type: "success",
@@ -171,6 +201,8 @@ export default function RoomsPage() {
             >
               {awayMode ? "🏖️ Away Mode (Active)" : "🚶 Toggle Away Mode"}
             </button>
+            <AlertBellPopover />
+            <UserProfileMenu />
           </div>
         </header>
 

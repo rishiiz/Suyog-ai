@@ -53,6 +53,35 @@ def acknowledge_alert(alert_id: int, req: AcknowledgeRequest, session: Session =
         raise HTTPException(status_code=404, detail="Active alert not found or already acknowledged")
     return {"status": "success", "alert": alert}
 
+@router.post("/elders/{elder_id}/alerts/clear")
+def clear_all_alerts(elder_id: int, session: Session = Depends(get_session)):
+    """Clear all active alerts for the elder."""
+    import datetime
+    active_alerts = session.exec(select(Alert).where(Alert.elder_id == elder_id, Alert.status == "active")).all()
+    count = 0
+    now = datetime.datetime.utcnow()
+    for a in active_alerts:
+        a.status = "resolved"
+        a.acknowledged_by = "Caregiver (Batch Clear)"
+        a.resolved_ts = now
+        session.add(a)
+        count += 1
+    session.commit()
+    return {"status": "success", "cleared_count": count}
+
+@router.delete("/alerts/{alert_id}")
+def delete_alert(alert_id: int, session: Session = Depends(get_session)):
+    """Delete an individual alert permanently."""
+    alert = session.get(Alert, alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    actions = session.exec(select(AlertAction).where(AlertAction.alert_id == alert_id)).all()
+    for act in actions:
+        session.delete(act)
+    session.delete(alert)
+    session.commit()
+    return {"status": "success", "deleted_id": alert_id}
+
 @router.post("/alerts/test")
 async def trigger_test_alert(req: TestAlertRequest, session: Session = Depends(get_session)):
     """

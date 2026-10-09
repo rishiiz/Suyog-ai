@@ -15,7 +15,7 @@ class ElderCreateRequest(BaseModel):
     name: str
     age: int
     phone: Optional[str] = None
-    address: str
+    address: str = "Home"
     landmark: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
@@ -23,6 +23,7 @@ class ElderCreateRequest(BaseModel):
     conditions: Optional[str] = None
     allergies: Optional[str] = None
     preferred_hospital: Optional[str] = None
+    user_id: Optional[int] = None
 
 class ContactAddRequest(BaseModel):
     name: str
@@ -45,7 +46,8 @@ def list_elders(session: Session = Depends(get_session)):
 
 @router.post("")
 def create_elder(req: ElderCreateRequest, session: Session = Depends(get_session)):
-    elder = Elder(**req.dict())
+    data = req.dict(exclude={"user_id"})
+    elder = Elder(**data)
     session.add(elder)
     session.commit()
     session.refresh(elder)
@@ -53,6 +55,28 @@ def create_elder(req: ElderCreateRequest, session: Session = Depends(get_session
     # Initialize default settings
     settings = ElderSettings(elder_id=elder.id)
     session.add(settings)
+    
+    # Link to user if user_id is provided
+    if req.user_id:
+        user = session.get(User, req.user_id)
+        if user:
+            rel = ElderCaregiver(
+                elder_id=elder.id,
+                user_id=user.id,
+                priority=1,
+                relationship="Primary Caregiver"
+            )
+            session.add(rel)
+
+    # Create default device registration
+    dev_id = f"cg_device_{elder.id:03d}"
+    device = Device(
+        device_id=dev_id,
+        elder_id=elder.id,
+        firmware="1.0.0",
+        status="offline"
+    )
+    session.add(device)
     session.commit()
 
     return elder

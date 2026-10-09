@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
+import { AlertBellPopover } from "@/components/AlertBellPopover";
 import { api } from "@/lib/api";
 
 interface Schedule {
@@ -43,6 +45,8 @@ interface AdherenceStats {
 }
 
 export default function MedicinesPage() {
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeElderId, setActiveElderId] = useState<number | null>(null);
   const [medicines, setMedicines] = useState<MedicineItem[]>([]);
   const [logs, setLogs] = useState<MedicineLogItem[]>([]);
   const [adherence, setAdherence] = useState<AdherenceStats | null>(null);
@@ -64,17 +68,38 @@ export default function MedicinesPage() {
 
   async function loadData() {
     try {
-      const [medsData, logsData, adhData, alertsData] = await Promise.all([
-        api.getMedicines(1).catch(() => []),
-        api.getMedicineLogs(1).catch(() => []),
-        api.getElderAdherence(1).catch(() => null),
-        api.getAlerts(1).catch(() => []),
-      ]);
-      setMedicines(medsData || []);
-      setLogs(logsData || []);
-      setAdherence(adhData);
-      const activeAlerts = (alertsData || []).filter((a: any) => a.status === "active");
-      setAlertCount(activeAlerts.length);
+      const me = await api.getMe().catch(() => null);
+      setCurrentUser(me);
+
+      const simFlag = typeof window !== "undefined" && localStorage.getItem("suyog_simulation_mode") === "true";
+      let targetId: number | null = null;
+
+      if (me?.elders && me.elders.length > 0) {
+        targetId = me.elders[0].id;
+      } else if (me?.is_demo || simFlag) {
+        targetId = 1;
+      }
+
+      setActiveElderId(targetId);
+
+      if (targetId) {
+        const [medsData, logsData, adhData, alertsData] = await Promise.all([
+          api.getMedicines(targetId).catch(() => []),
+          api.getMedicineLogs(targetId).catch(() => []),
+          api.getElderAdherence(targetId).catch(() => null),
+          api.getAlerts(targetId).catch(() => []),
+        ]);
+        setMedicines(medsData || []);
+        setLogs(logsData || []);
+        setAdherence(adhData);
+        const activeAlerts = (alertsData || []).filter((a: any) => a.status === "active");
+        setAlertCount(activeAlerts.length);
+      } else {
+        setMedicines([]);
+        setLogs([]);
+        setAdherence(null);
+        setAlertCount(0);
+      }
     } catch (err) {
       console.error("Error loading medicines:", err);
     } finally {
@@ -108,9 +133,13 @@ export default function MedicinesPage() {
       alert("Please fill in the required fields");
       return;
     }
+    if (!activeElderId) {
+      alert("Please link or create an elder profile from the Dashboard before adding prescriptions.");
+      return;
+    }
     setSubmitting(true);
     try {
-      await api.createMedicine(1, {
+      await api.createMedicine(activeElderId, {
         name,
         dosage,
         instructions: instructions || "Take with water",
@@ -159,12 +188,16 @@ export default function MedicinesPage() {
           <div>
             <h1 style={s.pageTitle}>Medicine Management</h1>
             <p style={s.pageSubtitle}>
-              Schedules, physical smart dispenser compartments, and intake adherence for Ramchandra Kulkarni
+              Schedules, physical smart dispenser compartments, and intake adherence
             </p>
           </div>
-          <button style={s.primaryBtn} onClick={() => setShowAddModal(true)}>
-            + Add Medicine Schedule
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <button style={s.primaryBtn} onClick={() => setShowAddModal(true)}>
+              + Add Medicine Schedule
+            </button>
+            <AlertBellPopover />
+            <UserProfileMenu />
+          </div>
         </header>
 
         {msg && (
@@ -349,7 +382,7 @@ export default function MedicinesPage() {
                   <label style={s.label}>Medicine Name *</label>
                   <input
                     style={s.input}
-                    placeholder="e.g. Metformin, Amlodipine"
+                    placeholder="Medicine name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -361,7 +394,7 @@ export default function MedicinesPage() {
                     <label style={s.label}>Dosage *</label>
                     <input
                       style={s.input}
-                      placeholder="e.g. 500mg, 1 tablet"
+                      placeholder="Dosage (e.g. 500mg)"
                       value={dosage}
                       onChange={(e) => setDosage(e.target.value)}
                       required
@@ -408,7 +441,7 @@ export default function MedicinesPage() {
                   <label style={s.label}>Instructions</label>
                   <input
                     style={s.input}
-                    placeholder="e.g. Take with warm water after meals"
+                    placeholder="Special instructions (optional)"
                     value={instructions}
                     onChange={(e) => setInstructions(e.target.value)}
                   />

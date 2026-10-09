@@ -7,16 +7,21 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/a
 
 export async function fetchJson(endpoint: string, options: RequestInit = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
+  const token = typeof window !== "undefined" ? localStorage.getItem("suyog_token") : null;
+  const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
   try {
     const res = await fetch(url, {
       ...options,
       headers: {
         "Content-Type": "application/json",
+        ...authHeaders,
         ...(options.headers || {}),
       },
     });
     if (!res.ok) {
-      throw new Error(`API error ${res.status}: ${await res.text()}`);
+      const errBody = await res.text();
+      throw new Error(`API error ${res.status}: ${errBody}`);
     }
     return await res.json();
   } catch (err) {
@@ -26,17 +31,39 @@ export async function fetchJson(endpoint: string, options: RequestInit = {}) {
 }
 
 export const api = {
-  // Elder status & timeline
-  getElderStatus: (elderId: number = 1) => fetchJson(`/elders/${elderId}/status`),
-  getElderTimeline: (elderId: number = 1) => fetchJson(`/elders/${elderId}/timeline`),
-  getElderAdherence: (elderId: number = 1) => fetchJson(`/elders/${elderId}/adherence`),
+  // Auth & Profile
+  getMe: () => fetchJson(`/auth/me`),
+  updateProfile: (data: any) =>
+    fetchJson(`/auth/me`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  // Elder registration & status
+  getElders: () => fetchJson(`/elders`),
+  createElder: (data: any) =>
+    fetchJson(`/elders`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getElderStatus: (elderId: number) => fetchJson(`/elders/${elderId}/status`),
+  getElderTimeline: (elderId: number) => fetchJson(`/elders/${elderId}/timeline`),
+  getElderAdherence: (elderId: number) => fetchJson(`/elders/${elderId}/adherence`),
 
   // Alerts & Escalation
-  getAlerts: (elderId: number = 1) => fetchJson(`/elders/${elderId}/alerts`),
+  getAlerts: (elderId: number) => fetchJson(`/elders/${elderId}/alerts`),
   acknowledgeAlert: (alertId: number, responderName: string = "Caregiver Dashboard") =>
     fetchJson(`/alerts/${alertId}/acknowledge`, {
       method: "POST",
       body: JSON.stringify({ responder_name: responderName }),
+    }),
+  clearAllAlerts: (elderId: number) =>
+    fetchJson(`/elders/${elderId}/alerts/clear`, {
+      method: "POST",
+    }),
+  deleteAlert: (alertId: number) =>
+    fetchJson(`/alerts/${alertId}`, {
+      method: "DELETE",
     }),
   triggerTestAlert: (elderId: number = 1, testType: string = "panic") =>
     fetchJson(`/alerts/test`, {
@@ -46,13 +73,13 @@ export const api = {
   getLiveNotifications: () => fetchJson(`/alerts/notifications/live`),
 
   // Medicines
-  getMedicines: (elderId: number = 1) => fetchJson(`/elders/${elderId}/medicines`),
-  createMedicine: (elderId: number = 1, data: any) =>
+  getMedicines: (elderId: number) => fetchJson(`/elders/${elderId}/medicines`),
+  createMedicine: (elderId: number, data: any) =>
     fetchJson(`/elders/${elderId}/medicines`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  getMedicineLogs: (elderId: number = 1) => fetchJson(`/elders/${elderId}/medicine-logs`),
+  getMedicineLogs: (elderId: number) => fetchJson(`/elders/${elderId}/medicine-logs`),
   confirmMedicine: (logId: number) =>
     fetchJson(`/medicine-logs/${logId}/confirm`, {
       method: "POST",
@@ -60,11 +87,11 @@ export const api = {
     }),
 
   // Away Mode & Consent
-  toggleAwayMode: (elderId: number = 1, away: boolean) =>
+  toggleAwayMode: (elderId: number, away: boolean) =>
     fetchJson(`/elders/${elderId}/away-mode?away=${away}`, {
       method: "POST",
     }),
-  acceptConsent: (elderId: number = 1) =>
+  acceptConsent: (elderId: number) =>
     fetchJson(`/elders/${elderId}/consent`, {
       method: "POST",
     }),

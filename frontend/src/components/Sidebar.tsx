@@ -11,7 +11,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, alertCount = 0 }) => {
   const router = useRouter();
-  const [userName, setUserName] = useState("Rohit Kulkarni");
+  const [userName, setUserName] = useState("Caregiver");
   const [userRole, setUserRole] = useState("Caregiver");
 
   useEffect(() => {
@@ -35,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, alertCount = 0 }) =
     { key: "medicines", label: "Medicines", icon: "💊", href: "/medicines" },
     { key: "rooms", label: "Rooms", icon: "🏠", href: "/rooms" },
     { key: "alerts", label: "Alerts", icon: "🔔", href: "/alerts", badge: alertCount > 0 ? alertCount : undefined },
+    { key: "settings", label: "Profile & Account", icon: "👤", href: "/profile" },
   ];
 
   return (
@@ -74,13 +75,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, alertCount = 0 }) =
       </div>
 
       <div style={s.sidebarBottom}>
-        <div style={s.sidebarUser}>
-          <div style={s.avatar}>{userName.charAt(0).toUpperCase()}</div>
-          <div style={{ overflow: "hidden" }}>
-            <div style={s.userName}>{userName}</div>
-            <div style={s.userRole}>{userRole}</div>
+        <Link href="/profile" style={{ textDecoration: "none" }}>
+          <div style={s.sidebarUser}>
+            <div style={s.avatar}>{userName.charAt(0).toUpperCase()}</div>
+            <div style={{ overflow: "hidden" }}>
+              <div style={s.userName}>{userName}</div>
+              <div style={s.userRole}>{userRole} · Settings ➔</div>
+            </div>
           </div>
-        </div>
+        </Link>
         <button style={s.signOutBtn} onClick={handleSignOut}>
           Sign out
         </button>
